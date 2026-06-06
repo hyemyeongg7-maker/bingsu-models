@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>빙수 메이커 🍧</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&family=Gaegu:wght@400;700&display=swap');
+
+  :root {
+    --accent: #ff7eb3;
+    --accent2: #7ed8e8;
+    --accent3: #b5a6ff;
+    --text: #4a3f55;
+    --text-light: #9a8fa8;
+    --glass: rgba(255,255,255,0.55);
+    --glass-strong: rgba(255,255,255,0.78);
+    --glass-border: rgba(255,255,255,0.7);
+    --shadow: 0 8px 24px rgba(180,140,200,0.18);
+    --shadow-pop: 0 4px 16px rgba(255,126,179,0.35);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    font-family: 'Gowun Dodum', sans-serif;
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+    background: linear-gradient(135deg, #fdf6fb 0%, #f3f0ff 50%, #eefcff 100%);
+  }
+
+  .tab-content { display:none; flex:1; flex-direction:column; overflow:hidden; }
+  .tab-content.active { display:flex; }
+  #home-tab { flex-direction:column; }
+
+  #canvas-wrap { flex:1; position:relative; overflow:hidden; min-height:0; }
+  #three-canvas { display:block; width:100%; height:100%; }
+
+  .loading-spinner {
+    position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
+    width:60px; height:60px; border:5px solid var(--glass);
+    border-top-color:var(--accent); border-radius:50%;
+    animation:spin 0.8s linear infinite; z-index:10;
+  }
+  @keyframes spin { to { transform:translate(-50%, -50%) rotate(360deg); } }
+
+  #btn-reset-icon {
+    position:absolute; top:14px; left:12px;
+    width:50px; height:50px; border-radius:50%;
+    border:2.5px solid var(--glass-border);
+    background:var(--glass-strong); backdrop-filter:blur(12px);
+    font-size:22px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text); transition:all .2s; z-index:5; box-shadow:var(--shadow);
+  }
+  #btn-reset-icon:hover { transform:scale(1.12) rotate(20deg); }
+
+  .type-btns {
+    position:absolute; top:14px; right:12px;
+    display:flex; flex-direction:column; gap:8px; z-index:5;
+  }
+  .type-btn {
+    width:50px; height:50px; border-radius:50%;
+    border:2.5px solid var(--glass-border);
+    background:var(--glass-strong); backdrop-filter:blur(12px);
+    font-size:24px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow);
+    transition: all .2s cubic-bezier(.34,1.56,.64,1);
+  }
+  .type-btn.active { border-color:var(--accent); box-shadow:var(--shadow-pop); transform:scale(1.1); }
+  .type-btn:hover { transform:scale(1.08); }
+
+  #sel-hint {
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    background:var(--glass-strong); backdrop-filter:blur(12px);
+    border:1.5px solid var(--glass-border); border-radius:20px;
+    padding:6px 16px; font-family:'Gaegu', cursive; font-size:14px;
+    color:var(--text); box-shadow:var(--shadow); pointer-events:none;
+    opacity:0; transition:opacity .3s; white-space:nowrap; z-index:5;
+  }
+  #sel-hint.visible { opacity:1; }
+
+  #hint-bar {
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    font-family:'Gaegu', cursive; font-size:13px; color:var(--text-light);
+    pointer-events:none; z-index:5;
+  }
+
+  .bottom-panel {
+    background:var(--glass-strong); backdrop-filter:blur(16px);
+    border-top:1.5px solid var(--glass-border);
+    padding:12px 12px 8px; flex-shrink:0;
+  }
+  .panel-label { text-align:center; font-size:12px; color:var(--text-light); margin-bottom:10px; letter-spacing:2px; }
+
+  .topping-row { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+  .arrow-btn {
+    width:32px; height:32px; min-width:32px; border-radius:50%;
+    border:1.5px solid var(--glass-border); background:var(--glass);
+    font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text); transition:all .2s; flex-shrink:0;
+  }
+  .arrow-btn:hover { background:var(--glass-strong); transform:scale(1.1); }
+
+  #topping-scroll { display:flex; gap:8px; flex:1; overflow:hidden; justify-content:center; }
+  .topping-card {
+    position:relative; width:72px; min-width:72px;
+    background:var(--glass-strong); backdrop-filter:blur(10px);
+    border:1.5px solid var(--glass-border); border-radius:16px;
+    padding:8px 4px 6px;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    cursor:pointer; transition:all .25s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:var(--shadow);
+  }
+  .topping-card.selected { border-color:var(--accent); box-shadow:var(--shadow-pop); transform:translateY(-4px) scale(1.06); }
+  .topping-card .icon { font-size:26px; }
+  .topping-card .name { font-size:10px; color:var(--text); }
+  .badge {
+    position:absolute; top:-5px; right:-5px;
+    background:var(--accent); color:#fff; border-radius:50%;
+    width:18px; height:18px; font-size:10px;
+    display:none; align-items:center; justify-content:center; font-weight:700;
+    box-shadow:0 2px 6px rgba(255,126,179,0.4);
+  }
+  .topping-card.has-count .badge { display:flex; }
+
+  .action-row { display:flex; gap:8px; align-items:center; }
+  .act-btn {
+    flex:1; padding:11px; border-radius:16px;
+    border:1.5px solid var(--glass-border); background:var(--glass);
+    font-family:'Gowun Dodum', sans-serif; font-size:14px; color:var(--text);
+    cursor:pointer; transition:all .2s;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .act-btn:hover { background:var(--glass-strong); transform:translateY(-2px); }
+  .act-btn.primary {
+    background:linear-gradient(135deg, var(--accent), var(--accent3));
+    color:#fff; border-color:transparent; box-shadow:var(--shadow-pop);
+  }
+
+  .tab-nav {
+    display:flex; background:var(--glass-strong); backdrop-filter:blur(16px);
+    border-top:1.5px solid var(--glass-border);
+    padding:6px 0 max(6px, env(safe-area-inset-bottom));
+    flex-shrink:0; z-index:20;
+  }
+  .tab-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:6px 0; border:none; background:transparent; cursor:pointer;
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .tab-btn .tab-icon { font-size:22px; }
+  .tab-btn .tab-text { font-size:10px; color:var(--text-light); }
+  .tab-btn.active .tab-text { color:var(--accent); }
+  .tab-btn.active { transform:scale(1.18) translateY(-2px); }
+
+  #toast {
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:rgba(74,63,85,0.9); color:#fff; padding:10px 22px; border-radius:20px;
+    font-size:14px; white-space:nowrap; opacity:0; transition:all .35s;
+    pointer-events:none; z-index:200; backdrop-filter:blur(8px);
+  }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-overlay {
+    display:none; position:fixed; inset:0; z-index:100;
+    background:rgba(0,0,0,0.35); backdrop-filter:blur(4px);
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.active { display:flex; }
+  .modal-box {
+    background:var(--glass-strong); backdrop-filter:blur(20px);
+    border:1.5px solid var(--glass-border); border-radius:28px;
+    padding:28px 24px 22px; width:100%; max-width:340px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .modal-title { font-family:'Black Han Sans', sans-serif; font-size:20px; text-align:center; }
+  .modal-text { font-size:14px; text-align:center; color:var(--text-light); }
+  .modal-input {
+    padding:12px 16px; border-radius:14px; border:1.5px solid var(--glass-border);
+    background:rgba(255,255,255,0.6); font-family:'Gowun Dodum', sans-serif;
+    font-size:15px; color:var(--text); outline:none; width:100%;
+  }
+  .modal-btns { display:flex; gap:10px; }
+  .modal-btn {
+    flex:1; padding:12px; border-radius:14px; border:1.5px solid var(--glass-border);
+    background:var(--glass); font-family:'Gowun Dodum', sans-serif;
+    font-size:14px; color:var(--text); cursor:pointer; transition:all .2s;
+  }
+  .modal-btn.primary { background:linear-gradient(135deg, var(--accent), var(--accent3)); color:#fff; border-color:transparent; }
+</style>
+</head>
+<body>
+
+<div class="tab-content active" id="home-tab">
+  <div id="canvas-wrap">
+    <canvas id="three-canvas"></canvas>
+    <div class="loading-spinner" id="loading-spinner"></div>
+    <button id="btn-reset-icon" title="초기화">🔄</button>
+    <div class="type-btns" id="type-btns"></div>
+    <div id="sel-hint"></div>
+    <div id="hint-bar">핀치로 줌 · 드래그로 회전</div>
+  </div>
+  <div class="bottom-panel">
+    <div class="panel-label">— 토핑 선택 —</div>
+    <div class="topping-row">
+      <button class="arrow-btn" id="arrow-left">‹</button>
+      <div id="topping-scroll"></div>
+      <button class="arrow-btn" id="arrow-right">›</button>
+    </div>
+    <div class="action-row">
+      <button class="act-btn" id="btn-undo">↩ 뒤로</button>
+      <button class="act-btn" id="btn-redo">↪ 앞으로</button>
+      <button class="act-btn primary" id="btn-save">📸 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="nickname-modal">
+  <div class="modal-box">
+    <div class="modal-title">🍧 빙수 메이커</div>
+    <div class="modal-text">닉네임을 입력해 주세요!</div>
+    <input class="modal-input" id="nickname-input" placeholder="닉네임" maxlength="10">
+    <button class="modal-btn primary" id="nickname-confirm">시작하기</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal-box">
+    <div class="modal-title">🔄 초기화</div>
+    <div class="modal-text">토핑을 모두 지울까요?</div>
+    <div class="modal-btns">
+      <button class="modal-btn" id="reset-cancel">취소</button>
+      <button class="modal-btn primary" id="reset-confirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+// ⚙️ 설정 - 이 부분만 수정하면 됨!
+const CONFIG = {
+  GITHUB_USERNAME: 'hyemyeongg7-maker',
+  REPO_NAME: 'bingsu-models',
+  MODELS: [
+    { name: '🍓 딸기빙수', file: 'model1.glb' },
+    // { name: '🍵 녹차빙수', file: 'model2.glb' },
+    // { name: '🫐 블루베리빙수', file: 'model3.glb' },
+  ]
+};
+
+const getModelUrl = (filename) => 
+  `https://${CONFIG.GITHUB_USERNAME}.github.io/${CONFIG.REPO_NAME}/${filename}`;
+
+const db = {
+  username: localStorage.getItem('bingsu_username') || '',
+  saveUsername(name) { localStorage.setItem('bingsu_username', name); this.username = name; },
+};
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+if (!db.username) document.getElementById('nickname-modal').classList.add('active');
+document.getElementById('nickname-confirm').addEventListener('click', () => {
+  const v = document.getElementById('nickname-input').value.trim();
+  if (!v) return;
+  db.saveUsername(v);
+  document.getElementById('nickname-modal').classList.remove('active');
+});
+
+// Three.js 설정
+const canvas = document.getElementById('three-canvas');
+const wrap = document.getElementById('canvas-wrap');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0xfafafa, 0.2);
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+
+function resizeRenderer() {
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resizeRenderer();
+window.addEventListener('resize', resizeRenderer);
+
+// 조명
+const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff0f5, 1.8);
+sun.position.set(5, 10, 5);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xe0f0ff, 0.8);
+fill.position.set(-5, 5, -5);
+scene.add(fill);
+
+// 모델 그룹
+const modelGroup = new THREE.Group();
+scene.add(modelGroup);
+
+let rotY = 0, rotX = 0.3, zoomDist = 5;
+let isDragging = false;
+const clock = new THREE.Clock();
+
+function updateCamera() {
+  const x = zoomDist * Math.sin(rotY) * Math.cos(rotX);
+  const y = zoomDist * Math.sin(rotX);
+  const z = zoomDist * Math.cos(rotY) * Math.cos(rotX);
+  camera.position.set(x, y, z);
+  camera.lookAt(0, 0, 0);
+}
+
+// GLB 로더
+const loader = new THREE.GLTFLoader();
+let currentModel = null;
+
+function loadModel(filename) {
+  const spinner = document.getElementById('loading-spinner');
+  spinner.style.display = 'block';
+  
+  const url = getModelUrl(filename);
+  console.log('📦 로딩:', url);
+  
+  loader.load(
+    url,
+    function(gltf) {
+      console.log('✅ 로드 완료!');
+      
+      if (currentModel) modelGroup.remove(currentModel);
+      
+      const scene_model = gltf.scene;
+      const bbox = new THREE.Box3().setFromObject(scene_model);
+      const center = bbox.getCenter(new THREE.Vector3());
+      const size = bbox.getSize(new THREE.Vector3());
+      
+      scene_model.position.sub(center);
+      
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 3 / maxDim;
+      scene_model.scale.multiplyScalar(scale);
+      
+      scene_model.traverse(child => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      
+      modelGroup.add(scene_model);
+      currentModel = scene_model;
+      
+      rotY = 0;
+      rotX = 0.35;
+      zoomDist = 5;
+      updateCamera();
+      
+      spinner.style.display = 'none';
+      showToast('🍧 빙수 준비 완료!');
+    },
+    undefined,
+    function(error) {
+      console.error('❌ 로드 실패:', error);
+      spinner.style.display = 'none';
+      showToast('모델 로드 실패');
+    }
+  );
+}
+
+// 토핑
+const TOPPINGS = [
+  { id:'strawberry', name:'딸기', icon:'🍓', color:0xff4466, r:0.15 },
+  { id:'mochi', name:'모찌', icon:'🍡', color:0xffb7c5, r:0.16 },
+  { id:'cream', name:'생크림', icon:'🍦', color:0xffffff, r:0.20 },
+  { id:'choco', name:'초코', icon:'🍫', color:0x5c3317, r:0.13 },
+];
+
+const toppingCounts = {};
+TOPPINGS.forEach(t => toppingCounts[t.id] = 0);
+let selectedTopping = TOPPINGS[0];
+const toppingMeshes = [];
+
+function makeToppingMesh(topping) {
+  const mat = new THREE.MeshPhongMaterial({ color: topping.color, shininess: 80 });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(topping.r, 12, 8), mat);
+  mesh.castShadow = true;
+  return mesh;
+}
+
+function spawnTopping(topping) {
+  const a = Math.random() * Math.PI * 2, d = Math.random() * 0.8;
+  const pos = new THREE.Vector3(Math.cos(a) * d, 1.5, Math.sin(a) * d);
+  
+  const mesh = makeToppingMesh(topping);
+  mesh.position.copy(pos);
+  mesh.userData = { born: Date.now(), popping: true, topping };
+  mesh.scale.set(0.01, 0.01, 0.01);
+  modelGroup.add(mesh);
+  toppingMeshes.push(mesh);
+  toppingCounts[topping.id]++;
+}
+
+// 토핑 카드
+const scrollEl = document.getElementById('topping-scroll');
+function renderToppingCards() {
+  scrollEl.innerHTML = '';
+  TOPPINGS.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'topping-card' + 
+      (selectedTopping?.id === t.id ? ' selected' : '') +
+      (toppingCounts[t.id] > 0 ? ' has-count' : '');
+    card.innerHTML = `<div class="icon">${t.icon}</div><div class="name">${t.name}</div><div class="badge">${toppingCounts[t.id]}</div>`;
+    card.addEventListener('click', () => {
+      selectedTopping = t;
+      renderToppingCards();
+    });
+    scrollEl.appendChild(card);
+  });
+}
+
+// 모델 선택 버튼
+const typeBtnsDiv = document.getElementById('type-btns');
+CONFIG.MODELS.forEach((model, idx) => {
+  const btn = document.createElement('button');
+  btn.className = 'type-btn' + (idx === 0 ? ' active' : '');
+  btn.innerHTML = model.name.split(' ')[0];
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadModel(model.file);
+  });
+  typeBtnsDiv.appendChild(btn);
+});
+
+// 초기화
+document.getElementById('btn-reset-icon').addEventListener('click', () => {
+  if (confirm('토핑을 모두 지울까요?')) {
+    toppingMeshes.forEach(m => modelGroup.remove(m));
+    toppingMeshes.length = 0;
+    TOPPINGS.forEach(t => toppingCounts[t.id] = 0);
+    renderToppingCards();
+    showToast('🔄 초기화했어요!');
+  }
+});
+
+// 저장
+document.getElementById('btn-save').addEventListener('click', () => {
+  const off = document.createElement('canvas');
+  off.width = 512;
+  off.height = 512;
+  const ctx = off.getContext('2d');
+  const g = ctx.createRadialGradient(256, 256, 0, 256, 256, 360);
+  g.addColorStop(0, '#fff0f8');
+  g.addColorStop(1, '#e8e0ff');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  renderer.render(scene, camera);
+  ctx.drawImage(canvas, 0, 0, 512, 512);
+  const img = off.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = img;
+  a.download = 'bingsu.png';
+  a.click();
+  showToast('📸 저장했어요!');
+});
+
+// 마우스 이벤트
+let prevMouse = { x: 0, y: 0 };
+canvas.addEventListener('mousedown', e => {
+  isDragging = true;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
+  rotY -= dx * 0.01;
+  rotX += dy * 0.01;
+  rotX = Math.max(-0.4, Math.min(1.2, rotX));
+  prevMouse = { x: e.clientX, y: e.clientY };
+  updateCamera();
+});
+
+canvas.addEventListener('click', e => {
+  if (!selectedTopping) return;
+  spawnTopping(selectedTopping);
+});
+
+// 애니메이션
+function animate() {
+  requestAnimationFrame(animate);
+  
+  if (!isDragging) {
+    rotY += 0.0008;
+    updateCamera();
+  }
+  
+  toppingMeshes.forEach(m => {
+    if (m.userData.popping) {
+      const elapsed = (Date.now() - m.userData.born) / 300;
+      if (elapsed < 1) {
+        const s = Math.sin(elapsed * Math.PI / 2) * 1.1;
+        m.scale.set(s, s, s);
+      } else {
+        m.scale.set(1, 1, 1);
+        m.userData.popping = false;
+      }
+    }
+  });
+  
+  renderer.render(scene, camera);
+}
+
+renderToppingCards();
+loadModel(CONFIG.MODELS[0].file);
+animate();
+</script>
+</body>
+</html>
