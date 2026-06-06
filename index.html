@@ -261,7 +261,7 @@ const CONFIG = {
 };
 
 const getModelUrl = (filename) => 
-  `https://${CONFIG.GITHUB_USERNAME}.github.io/${CONFIG.REPO_NAME}/${filename}`;
+  `https://raw.githubusercontent.com/${CONFIG.GITHUB_USERNAME}/${CONFIG.REPO_NAME}/main/${filename}`;
 
 const db = {
   username: localStorage.getItem('bingsu_username') || '',
